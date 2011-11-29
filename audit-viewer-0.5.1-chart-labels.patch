@@ -1,0 +1,60 @@
+Quote escape sequences in pychart labels (e.g. '/')
+
+2010-03-31  Miloslav Trmač  <mitr@redhat.com>
+
+	* src/report_tab.py (ReportTab.__repaint_chart): Quote all strings
+	to protect against pychart escape sequences.
+
+diff -r 467bd1382d59 -r 22497aedc623 src/report_tab.py
+--- a/src/report_tab.py	Wed Mar 31 14:22:34 2010 +0200
++++ b/src/report_tab.py	Wed Mar 31 14:42:17 2010 +0200
+@@ -30,6 +30,7 @@
+ import pychart.canvas
+ import pychart.category_coord
+ import pychart.fill_style
++import pychart.font
+ import pychart.legend
+ import pychart.theme
+ import rsvg
+@@ -339,12 +340,12 @@
+             return # Nothing to do
+ 
+         if self.column_statistic is None:
+-            data = [(row_range.get_label(), self.counts[row_range])
+-                    for row_range in self.row_ranges]
++            data = [(pychart.font.quotemeta(row_range.get_label()),
++                     self.counts[row_range]) for row_range in self.row_ranges]
+         else:
+             data = []
+             for row_range in self.row_ranges:
+-                row = ([row_range.get_label()] +
++                row = ([pychart.font.quotemeta(row_range.get_label())] +
+                        [self.counts.get((row_range, column_range))
+                         for column_range in self.column_ranges])
+                 data.append(row)
+@@ -375,10 +376,9 @@
+             legend = None
+         else:
+             legend = pychart.legend.T()
++        x_axis_label = pychart.font.quotemeta(self.row_statistic.field_name)
+         area = pychart.area.T(size = (width, height),
+-                              x_axis = pychart.axis.X(label =
+-                                                      self.row_statistic.
+-                                                      field_name),
++                              x_axis = pychart.axis.X(label = x_axis_label),
+                               y_axis = pychart.axis.Y(format = '%d', label=''),
+                               legend = legend,
+                               x_coord = pychart.category_coord.T(data, 0),
+@@ -393,9 +393,11 @@
+         else:
+             fill_it = pychart.fill_style.color_standards.iterate()
+             for (col, column_range) in enumerate(self.column_ranges):
++                column_plot_label = pychart.font.quotemeta(column_range.
++                                                           get_label())
+                 plot = pychart.bar_plot.T(data = data, hcol = col + 1,
+                                           fill_style = fill_it.next(),
+-                                          label = column_range.get_label(),
++                                          label = column_plot_label,
+                                           cluster =
+                                           (col, len(self.column_ranges)))
+                 area.add_plot(plot)

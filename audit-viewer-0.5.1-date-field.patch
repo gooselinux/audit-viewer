@@ -1,0 +1,54 @@
+Offer the 'date' field for report statistics.
+
+2010-03-31  Miloslav Trmač  <mitr@redhat.com>
+
+	* src/report_properties.py (ReportProperties.__init__): Include the
+	synthetic 'date' field when offering fields for statistics.
+	* src/tab_properties.py (TabProperties._init_field_combo): New parameter
+	add_date.
+
+diff -r 09812a1ae574 -r 467bd1382d59 src/report_properties.py
+--- a/src/report_properties.py	Fri Mar 26 15:42:48 2010 +0100
++++ b/src/report_properties.py	Wed Mar 31 14:22:34 2010 +0200
+@@ -44,7 +44,7 @@
+         super(ReportProperties, self).__gobject_init__()
+ 
+         self.__old_row_field = None
+-        self._init_field_combo(self.report_row_field)
++        self._init_field_combo(self.report_row_field, add_date=True)
+         # String first is assumed by util.set_combo_option
+         self.row_grouping_store = gtk.ListStore(gobject.TYPE_STRING,
+                                                 gobject.TYPE_PYOBJECT)
+@@ -59,7 +59,7 @@
+         util.connect_and_run(self.report_use_column, 'toggled',
+                              self.__report_use_column_toggled)
+         self.__old_column_field = None
+-        self._init_field_combo(self.report_column_field)
++        self._init_field_combo(self.report_column_field, add_date=True)
+         self.column_grouping_store = gtk.ListStore(gobject.TYPE_STRING,
+                                                    gobject.TYPE_PYOBJECT)
+         util.connect_and_run(self.report_column_field, 'changed',
+diff -r 09812a1ae574 -r 467bd1382d59 src/tab_properties.py
+--- a/src/tab_properties.py	Fri Mar 26 15:42:48 2010 +0100
++++ b/src/tab_properties.py	Wed Mar 31 14:22:34 2010 +0200
+@@ -406,10 +406,17 @@
+         return None
+ 
+     @staticmethod
+-    def _init_field_combo(combo):
+-        '''Initialize a GtkComboBoxEntry with known field names.'''
++    def _init_field_combo(combo, add_date=False):
++        '''Initialize a GtkComboBoxEntry with known field names.
++
++        Add 'date' if add_date.
++
++        '''
+         store = gtk.ListStore(gobject.TYPE_STRING)
+-        for field in lists.field_names:
++        fields = lists.field_names
++        if add_date:
++            fields = fields + ('date',)
++        for field in sorted(fields):
+             store.append((field,))
+         combo.set_model(store)
+         combo.set_text_column(0)

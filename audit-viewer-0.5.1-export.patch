@@ -1,0 +1,32 @@
+# HG changeset patch
+# User Miloslav Trmač <mitr@redhat.com>
+# Date 1261206110 -3600
+# Node ID 48319b48e63cfe7490ddc108f37587b504ece34f
+# Parent  a48ae8a97e46bfdf8559012089218032b5099630
+2009-12-19  Miloslav Trmač  <mitr@redhat.com>
+
+	* src/list_tab.py (ListTab.__date_column_text): Fix call parameters.
+
+diff -r a48ae8a97e46 -r 48319b48e63c ChangeLog
+--- a/ChangeLog	Fri Dec 11 04:56:35 2009 +0000
++++ b/ChangeLog	Sat Dec 19 08:01:50 2009 +0100
+@@ -1,3 +1,7 @@
++2009-12-19  Miloslav Trmač  <mitr@redhat.com>
++
++	* src/list_tab.py (ListTab.__date_column_text): Fix call parameters.
++
+ 2009-10-01  Miloslav Trmač  <mitr@redhat.com>
+ 
+ 	* configure.ac: Release version 0.5.1.
+diff -r a48ae8a97e46 -r 48319b48e63c src/list_tab.py
+--- a/src/list_tab.py	Fri Dec 11 04:56:35 2009 +0000
++++ b/src/list_tab.py	Sat Dec 19 08:01:50 2009 +0100
+@@ -413,7 +413,7 @@
+     def __date_column_text(self, it):
+         '''Return date column contents for it.'''
+         event = self.store.get_value(it, 0)
+-        return self.__date_column_event_text(self, event)
++        return self.__date_column_event_text(event)
+ 
+     def __date_column_data_fn(self, unused_column, cell, model, it):
+         '''Set CellRendererText's properties for a date column.'''

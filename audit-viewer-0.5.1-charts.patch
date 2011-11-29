@@ -1,0 +1,133 @@
+# HG changeset patch
+# User Miloslav Trmač <mitr@redhat.com>
+# Date 1263567293 -3600
+# Node ID 28138aafd1f06431418df7d58579dd8af67ac2ef
+# Parent  d9d8ecbf431ef398e8dd340b70b18998d9b9c2db
+Fix sizing of charts (used to be 2x3px)
+
+2010-01-15  Miloslav Trmač  <mitr@redhat.com>
+
+	* src/report_tab.py (min_chart_width, min_chart_height): Name the
+	constants.
+	(ReportTab.__report_chart_viewport_size_allocate): Replace
+	ReportTab.__report_chart_size_allocate.  Use gobject.idle_add().
+	(ReportTab.__create_report_chart): Watch "size-allocate" of the
+	viewport, not of the image (the image's allocation isn't reduced if the
+	window is shrunk).
+	(ReportTab.__create_report_sheet): Use allocation of the viewport, not
+	of the image.  Add explicit width and height to the SVG, viewBox cannot
+	be used by librsvg to determine it.
+
+diff -r d9d8ecbf431e -r 28138aafd1f0 ChangeLog
+--- a/ChangeLog	Mon Dec 21 14:03:43 2009 +0100
++++ b/ChangeLog	Fri Jan 15 15:54:53 2010 +0100
+@@ -1,3 +1,16 @@
++2010-01-15  Miloslav Trmač  <mitr@redhat.com>
++
++	* src/report_tab.py (min_chart_width, min_chart_height): Name the
++	constants.
++	(ReportTab.__report_chart_viewport_size_allocate): Replace
++	ReportTab.__report_chart_size_allocate.  Use gobject.idle_add().
++	(ReportTab.__create_report_chart): Watch "size-allocate" of the
++	viewport, not of the image (the image's allocation isn't reduced if the
++	window is shrunk).
++	(ReportTab.__create_report_sheet): Use allocation of the viewport, not
++	of the image.  Add explicit width and height to the SVG, viewBox cannot
++	be used by librsvg to determine it.
++
+ 2009-12-19  Miloslav Trmač  <mitr@redhat.com>
+ 
+ 	* src/list_tab.py (ListTab.__date_column_text): Fix call parameters.
+diff -r d9d8ecbf431e -r 28138aafd1f0 src/report_tab.py
+--- a/src/report_tab.py	Mon Dec 21 14:03:43 2009 +0100
++++ b/src/report_tab.py	Fri Jan 15 15:54:53 2010 +0100
+@@ -19,6 +19,7 @@
+ 
+ import csv
+ import cStringIO
++import re
+ 
+ import gobject
+ import gtk
+@@ -45,6 +46,10 @@
+ pychart.theme.use_color = True
+ pychart.theme.reinitialize()
+ 
++# 162/100 is roughly the golden ratio
++min_chart_width = 162
++min_chart_height = 100
++
+ def N_(s): return s
+ 
+ class ReportTab(Tab):
+@@ -293,16 +298,21 @@
+ 
+         util.save_to_file(filename, 'w', write_to_file)
+ 
+-    def __report_chart_size_allocate(self, *_):
+-        self.__repaint_chart()
++    def __report_chart_viewport_size_allocate(self, *_):
++        gobject.idle_add(self.__repaint_chart)
+ 
+     def __create_report_chart(self):
+         self.__report_chart_last_allocation = (0, 0)
+         self.report_chart = gtk.Image()
+-        self.report_chart.connect('size-allocate',
+-                                  self.__report_chart_size_allocate)
+         self.report_chart.show()
+-        self.report_scrolled_window.add_with_viewport(self.report_chart)
++        rsw = self.report_scrolled_window
++        self.__report_chart_viewport = gtk.Viewport(rsw.get_hadjustment(),
++                                                    rsw.get_vadjustment())
++        self.__report_chart_viewport.connect \
++            ('size-allocate', self.__report_chart_viewport_size_allocate)
++        self.__report_chart_viewport.add(self.report_chart)
++        self.__report_chart_viewport.show()
++        rsw.add(self.__report_chart_viewport)
+ 
+     def __create_report_sheet(self):
+         '''Create self.report_sheet and show it.'''
+@@ -318,7 +328,7 @@
+         If force, do it even if the size has not changed.
+ 
+         '''
+-        allocation = self.report_chart.allocation
++        allocation = self.__report_chart_viewport.allocation
+         # Don't bother while creating the dialog or if the window is way too
+         # small
+         if allocation.width < 10 or allocation.height < 10:
+@@ -353,14 +363,13 @@
+         # area size does not include axes and other areas.  Guess how much these
+         # take...
+         if self.column_statistic is None:
+-            width = allocation.width - 100
++            width_margin = 100
+         else: # Include space for legend
+-            width = allocation.width - 200
+-        height = allocation.height - 40
+-        # Make sure the chart is not too small.  162/100 is roughly the golden
+-        # ratio.
+-        width = max(width, 162)
+-        height = max(height, 100)
++            width_margin = 200
++        height_margin = 40
++        # Make sure the chart is not too small.
++        width = max(allocation.width - width_margin, min_chart_width)
++        height = max(allocation.height - height_margin, min_chart_height)
+ 
+         if self.column_statistic is None:
+             legend = None
+@@ -396,6 +405,13 @@
+         canvas.close()
+         svg = f.getvalue()
+         f.close()
++        svg_elem = re.search('<svg\s+', svg)
++        if svg_elem:
++            # Subtract two pixels to make sure the scrollbars won't appear
++            svg = (svg[:svg_elem.end()] +
++                   ('width="%spx" height="%spx" ' %
++                    (width + width_margin - 2, height + height_margin - 2)) +
++                   svg[svg_elem.end():])
+         h = rsvg.Handle(data = svg)
+         self.report_chart.set_from_pixbuf(h.get_pixbuf())
+ 
